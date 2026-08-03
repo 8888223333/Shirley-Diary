@@ -64,7 +64,7 @@ function loadData() {
     todos: {},          // { '2026-01-01': [{text, done}] }
     workouts: [],       // [{date, duration, weight}]
     periodLogs: [],     // [{startDate, endDate, flow, symptoms}]
-    styles: [],         // [{name, desc, budget, materials, image}]
+    styles: [],         // [{id, name, desc, budget, materials, image, icon, images:[], notes:[{text, date}]}]
     vocab: [],          // [{word, phonetic, meaning, example, mastered, date}]
     readingDays: 0,
     wallpaper: null,
@@ -72,6 +72,13 @@ function loadData() {
   };
   for (const k in defaults) {
     if (App.data[k] === undefined) App.data[k] = defaults[k];
+  }
+  // 兼容旧数据：给 styles 添加 images 和 notes 字段
+  if (App.data.styles) {
+    App.data.styles.forEach(s => {
+      if (!s.images) s.images = [];
+      if (!s.notes) s.notes = [];
+    });
   }
   saveData();
 }
@@ -190,14 +197,14 @@ function getCatConfig(name) {
 
 // ===== 装修风格预设 =====
 const STYLE_PRESETS = [
-  { name: '现代简约', icon: '🏢', desc: '简洁线条，功能至上，色彩以黑白灰为主。', budget: '5-15万' },
-  { name: '北欧风格', icon: '🌲', desc: '自然材质，明亮色彩，温馨舒适。', budget: '6-18万' },
-  { name: '日式原木', icon: '🏡', desc: '原木色为主，留白空间，禅意宁静。', budget: '8-20万' },
-  { name: '中式风格', icon: '🏮', desc: '传统元素，对称布局，典雅大气。', budget: '10-30万' },
-  { name: '轻奢风格', icon: '✨', desc: '金属点缀，质感面料，低调奢华。', budget: '12-35万' },
-  { name: '法式复古', icon: '🌹', desc: '石膏线，拱形门，浪漫优雅。', budget: '10-28万' },
-  { name: '工业风', icon: '🏭', desc: '裸露砖墙，金属管道，粗犷个性。', budget: '6-16万' },
-  { name: '奶油风', icon: '🍦', desc: '奶白米色系，柔和温暖，少女心满满。', budget: '5-14万' }
+  { name: '现代简约', icon: '🏢', cssClass: 'style-img-modern', desc: '简洁线条，功能至上，色彩以黑白灰为主。', budget: '5-15万' },
+  { name: '北欧风格', icon: '🌲', cssClass: 'style-img-nordic', desc: '自然材质，明亮色彩，温馨舒适。', budget: '6-18万' },
+  { name: '日式原木', icon: '🏡', cssClass: 'style-img-japanese', desc: '原木色为主，留白空间，禅意宁静。', budget: '8-20万' },
+  { name: '中式风格', icon: '🏮', cssClass: 'style-img-chinese', desc: '传统元素，对称布局，典雅大气。', budget: '10-30万' },
+  { name: '轻奢风格', icon: '✨', cssClass: 'style-img-luxury', desc: '金属点缀，质感面料，低调奢华。', budget: '12-35万' },
+  { name: '法式复古', icon: '🌹', cssClass: 'style-img-french', desc: '石膏线，拱形门，浪漫优雅。', budget: '10-28万' },
+  { name: '工业风', icon: '🏭', cssClass: 'style-img-industrial', desc: '裸露砖墙，金属管道，粗犷个性。', budget: '6-16万' },
+  { name: '奶油风', icon: '🍦', cssClass: 'style-img-cream', desc: '奶白米色系，柔和温暖，少女心满满。', budget: '5-14万' }
 ];
 
 // ===== 壁纸列表 =====
@@ -1181,16 +1188,16 @@ function renderStyle(c) {
       <div class="input-row">
         <input class="input" id="style-search" placeholder="搜索风格..." />
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="style-tags">
         <span class="tag active" data-filter="all">全部</span>
         ${STYLE_PRESETS.map(s => `<span class="tag" data-filter="${s.name}">${s.icon} ${s.name}</span>`).join('')}
       </div>
 
       <!-- 预设风格 -->
-      <h4 style="margin:12px 0 8px;font-size:14px;color:var(--text-secondary);">预设风格</h4>
+      <h4 style="margin:12px 0 8px;font-size:14px;color:var(--text-secondary);">🎨 预设风格参考</h4>
       <div class="style-grid" id="preset-grid"></div>
 
-      <h4 style="margin:16px 0 8px;font-size:14px;color:var(--text-secondary);">我的收藏</h4>
+      <h4 style="margin:16px 0 8px;font-size:14px;color:var(--text-secondary);">❤️ 我的风格收藏</h4>
       <button class="btn" id="style-add" style="margin-bottom:12px;">+ 添加自定义风格</button>
       <div class="style-grid" id="custom-grid"></div>
     </div>
@@ -1206,7 +1213,8 @@ function renderStyle(c) {
     if (searchKey) items = items.filter(s => s.name.includes(searchKey) || s.desc.includes(searchKey));
     grid.innerHTML = items.map(s => `
       <div class="style-card" data-preset="${esc(s.name)}">
-        <div class="style-image">${s.icon}</div>
+        <div class="style-image ${s.cssClass}">${s.icon}</div>
+        <div class="style-card-arrow">→</div>
         <div class="style-info">
           <div class="style-name">${esc(s.name)}</div>
           <div class="style-desc">${esc(s.desc)}</div>
@@ -1214,19 +1222,31 @@ function renderStyle(c) {
         </div>
       </div>
     `).join('');
+
+    // 预设点击 → 进入详情页
     grid.querySelectorAll('[data-preset]').forEach(card => {
       card.addEventListener('click', () => {
         const name = card.dataset.preset;
         const preset = STYLE_PRESETS.find(p => p.name === name);
-        // 收藏到自定义
-        if (!App.data.styles.find(s => s.name === preset.name)) {
-          App.data.styles.push({ id: 's' + Date.now(), name: preset.name, desc: preset.desc, budget: preset.budget, materials: '', image: '', icon: preset.icon });
+        // 自动收藏并进入详情
+        let style = App.data.styles.find(s => s.name === preset.name);
+        if (!style) {
+          style = {
+            id: 's' + Date.now(),
+            name: preset.name,
+            desc: preset.desc,
+            budget: preset.budget,
+            materials: '',
+            image: '',
+            icon: preset.icon,
+            cssClass: preset.cssClass,
+            images: [],
+            notes: []
+          };
+          App.data.styles.push(style);
           saveData();
-          renderCustom();
-          alert(`已收藏「${name}」`);
-        } else {
-          alert('已收藏过此风格');
         }
+        renderStyleDetail(c, style);
       });
     });
   }
@@ -1237,30 +1257,46 @@ function renderStyle(c) {
     if (currentFilter !== 'all') items = items.filter(s => s.name === currentFilter);
     if (searchKey) items = items.filter(s => s.name.includes(searchKey) || (s.desc && s.desc.includes(searchKey)));
     if (!items.length) {
-      grid.innerHTML = '<div class="empty-state-text" style="grid-column:1/-1;padding:20px;">还没有收藏的风格</div>';
+      grid.innerHTML = '<div class="empty-state-text" style="grid-column:1/-1;padding:20px;">还没有收藏的风格，点击预设风格开始吧 ✨</div>';
       return;
     }
-    grid.innerHTML = items.map(s => `
-      <div class="style-card" data-id="${s.id}">
-        <div class="style-image">${s.image ? `<img src="${esc(s.image)}" />` : (s.icon || '🛋️')}</div>
-        <div class="style-info">
-          <div class="style-name">${esc(s.name)}</div>
-          <div class="style-desc">${esc(s.desc || '暂无描述')}</div>
-          ${s.budget ? `<div class="style-budget">预算：${esc(s.budget)}</div>` : ''}
-          ${s.materials ? `<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">材料：${esc(s.materials)}</div>` : ''}
+    grid.innerHTML = items.map(s => {
+      const preset = STYLE_PRESETS.find(p => p.name === s.name);
+      const cssClass = preset ? preset.cssClass : '';
+      const hasImg = s.images && s.images.length > 0;
+      const noteCount = s.notes ? s.notes.length : 0;
+      return `
+        <div class="style-card" data-id="${s.id}">
+          <div class="style-image ${cssClass}">
+            ${hasImg ? `<img src="${esc(s.images[0])}" alt="${esc(s.name)}" />` : (s.image ? `<img src="${esc(s.image)}" />` : (s.icon || '🛋️'))}
+          </div>
+          <div class="style-card-arrow">→</div>
+          <div class="style-info">
+            <div class="style-name">${esc(s.name)}</div>
+            <div class="style-desc">${esc(s.desc || '暂无描述')}</div>
+            ${s.budget ? `<div class="style-budget">预算：${esc(s.budget)}</div>` : ''}
+            <div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;display:flex;gap:10px;">
+              ${hasImg ? `<span>🖼️ ${s.images.length}张图</span>` : ''}
+              ${noteCount > 0 ? `<span>📝 ${noteCount}条记录</span>` : ''}
+            </div>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
     grid.querySelectorAll('[data-id]').forEach(card => {
-      card.addEventListener('click', () => editStyle(card.dataset.id));
+      card.addEventListener('click', () => {
+        const style = App.data.styles.find(s => s.id === card.dataset.id);
+        if (style) renderStyleDetail(c, style);
+      });
     });
   }
 
+  // 搜索 & 筛选事件
   $('#style-search').addEventListener('input', e => { searchKey = e.target.value.trim(); renderPresets(); renderCustom(); });
-  $('#style-add').addEventListener('click', () => editStyle(null));
-  document.querySelectorAll('[data-filter]').forEach(t => {
+  $('#style-add').addEventListener('click', () => editStyle(c, null));
+  $('#style-tags').querySelectorAll('.tag').forEach(t => {
     t.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter]').forEach(x => x.classList.remove('active'));
+      $('#style-tags').querySelectorAll('.tag').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       currentFilter = t.dataset.filter;
       renderPresets();
@@ -1272,7 +1308,189 @@ function renderStyle(c) {
   renderCustom();
 }
 
-function editStyle(id) {
+// ===== 风格详情页 =====
+function renderStyleDetail(c, style) {
+  const preset = STYLE_PRESETS.find(p => p.name === style.name);
+  const cssClass = preset ? preset.cssClass : '';
+  const images = style.images || [];
+  const notes = style.notes || [];
+
+  c.innerHTML = `
+    <div class="style-detail">
+      <button class="style-detail-back" id="style-back">← 返回风格列表</button>
+
+      <!-- 顶部大图 -->
+      <div class="style-detail-hero ${cssClass}">
+        ${images.length > 0 ? `<img src="${esc(images[0])}" alt="${esc(style.name)}" />` : (style.image ? `<img src="${esc(style.image)}" />` : `<div style="font-size:80px;display:flex;align-items:center;justify-content:center;height:100%;">${style.icon || '🛋️'}</div>`)}
+      </div>
+
+      <!-- 风格信息 -->
+      <div class="style-detail-meta">
+        <div class="style-name">${esc(style.name)}</div>
+        <div class="style-desc">${esc(style.desc || '暂无描述')}</div>
+        ${style.budget ? `<span class="style-budget">💰 预算：${esc(style.budget)}</span>` : ''}
+        ${style.materials ? `<span class="style-budget" style="margin-left:8px;">📋 ${esc(style.materials)}</span>` : ''}
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-sm" id="style-edit">✏️ 编辑信息</button>
+          <button class="btn btn-sm btn-secondary" id="style-delete-detail">🗑️ 删除</button>
+        </div>
+      </div>
+
+      <!-- 图片画廊 -->
+      <div class="card">
+        <div class="card-title">🖼️ 灵感图片 (${images.length})</div>
+        <div class="style-gallery" id="style-gallery">
+          ${images.map((img, i) => `
+            <div class="style-gallery-item" data-img-idx="${i}">
+              <img src="${esc(img)}" alt="灵感图 ${i+1}" loading="lazy" />
+              <button class="gallery-delete" data-del-img="${i}">✕</button>
+            </div>
+          `).join('')}
+          <div class="style-gallery-add" id="style-img-add">
+            <span class="add-icon">+</span>
+            <span>添加图片</span>
+          </div>
+        </div>
+        <!-- 添加图片弹层 -->
+        <div id="style-img-input" style="display:none;margin-top:10px;">
+          <div class="input-row">
+            <input class="input" id="style-img-url" placeholder="粘贴图片 URL..." />
+            <button class="btn btn-sm" id="style-img-url-btn">添加</button>
+          </div>
+          <input type="file" id="style-img-file" accept="image/*" style="margin-top:6px;padding:8px;background:var(--bg-soft);border-radius:10px;width:100%;font-size:12px;color:var(--text-secondary);" />
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">支持粘贴链接或本地上传</div>
+        </div>
+      </div>
+
+      <!-- 备注记录 -->
+      <div class="card">
+        <div class="card-title">📝 记录笔记 (${notes.length})</div>
+        <div class="style-notes-timeline" id="style-notes">
+          ${notes.length === 0 ? '<div class="empty-state-text" style="padding:16px;">还没有记录，写下你的想法吧</div>' : ''}
+          ${notes.slice().reverse().map((n, i) => {
+            const realIdx = notes.length - 1 - i;
+            return `
+              <div class="style-note-item">
+                <div class="style-note-time">${esc(n.date || '')}</div>
+                <div class="style-note-content">${esc(n.text)}</div>
+                <button class="style-note-delete" data-del-note="${realIdx}">删除</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="style-note-input-row">
+          <textarea class="input" id="style-note-input" placeholder="写点想法、灵感、注意事项..." rows="2"></textarea>
+          <button class="btn btn-sm" id="style-note-add" style="flex-shrink:0;">记录</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ===== 事件绑定 =====
+
+  // 返回列表
+  $('#style-back').addEventListener('click', () => renderStyle(c));
+
+  // 编辑信息
+  $('#style-edit').addEventListener('click', () => editStyle(c, style.id));
+
+  // 删除风格
+  $('#style-delete-detail').addEventListener('click', () => {
+    if (confirm(`确定删除「${style.name}」吗？所有图片和记录也会被删除。`)) {
+      App.data.styles = App.data.styles.filter(s => s.id !== style.id);
+      saveData();
+      renderStyle(c);
+    }
+  });
+
+  // 显示/隐藏图片输入区
+  $('#style-img-add').addEventListener('click', () => {
+    const inputArea = $('#style-img-input');
+    inputArea.style.display = inputArea.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // 添加图片 URL
+  $('#style-img-url-btn').addEventListener('click', () => {
+    const url = $('#style-img-url').value.trim();
+    if (!url) return;
+    addStyleImage(style, url);
+    $('#style-img-url').value = '';
+    renderStyleDetail(c, style);
+  });
+
+  // 本地上传图片
+  $('#style-img-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      addStyleImage(style, ev.target.result);
+      renderStyleDetail(c, style);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 删除图片
+  c.querySelectorAll('[data-del-img]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.delImg);
+      if (confirm('删除这张图片？')) {
+        style.images.splice(idx, 1);
+        saveData();
+        renderStyleDetail(c, style);
+      }
+    });
+  });
+
+  // 点击图片放大查看（简单版：新窗口打开）
+  c.querySelectorAll('.style-gallery-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.closest('.gallery-delete')) return;
+      const idx = parseInt(item.dataset.imgIdx);
+      window.open(style.images[idx], '_blank');
+    });
+  });
+
+  // 添加备注
+  $('#style-note-add').addEventListener('click', () => {
+    const text = $('#style-note-input').value.trim();
+    if (!text) return;
+    if (!style.notes) style.notes = [];
+    style.notes.push({ text, date: fmtDate(new Date()) + ' ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) });
+    saveData();
+    renderStyleDetail(c, style);
+  });
+
+  // 删除备注
+  c.querySelectorAll('[data-del-note]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.delNote);
+      if (confirm('删除这条记录？')) {
+        style.notes.splice(idx, 1);
+        saveData();
+        renderStyleDetail(c, style);
+      }
+    });
+  });
+
+  // 回车快速添加备注
+  $('#style-note-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      $('#style-note-add').click();
+    }
+  });
+}
+
+function addStyleImage(style, url) {
+  if (!style.images) style.images = [];
+  style.images.push(url);
+  saveData();
+}
+
+// ===== 编辑风格弹窗 =====
+function editStyle(c, id) {
   const style = id ? App.data.styles.find(s => s.id === id) : null;
   const overlay = el('div', 'modal-overlay');
   overlay.innerHTML = `
@@ -1295,7 +1513,7 @@ function editStyle(id) {
         <textarea class="input" id="modal-materials" rows="2" placeholder="如：实木地板、乳胶漆...">${style ? esc(style.materials) : ''}</textarea>
       </div>
       <div class="input-group" style="margin-bottom:10px;">
-        <label>图片 URL（可选）</label>
+        <label>封面图片 URL（可选）</label>
         <input class="input" id="modal-image" value="${style ? esc(style.image) : ''}" placeholder="粘贴图片链接" />
       </div>
       <div class="modal-actions">
@@ -1321,11 +1539,16 @@ function editStyle(id) {
     if (style) {
       Object.assign(style, data);
     } else {
-      App.data.styles.push({ id: 's' + Date.now(), ...data, icon: '🛋️' });
+      App.data.styles.push({ id: 's' + Date.now(), ...data, icon: '🛋️', images: [], notes: [] });
     }
     saveData();
     overlay.remove();
-    switchPage('style');
+    if (style) {
+      // 如果是从详情页进来的，返回详情页
+      renderStyleDetail(c, style);
+    } else {
+      renderStyle(c);
+    }
   });
 
   if (style) {
@@ -1334,7 +1557,7 @@ function editStyle(id) {
         App.data.styles = App.data.styles.filter(s => s.id !== id);
         saveData();
         overlay.remove();
-        switchPage('style');
+        renderStyle(c);
       }
     });
   }
