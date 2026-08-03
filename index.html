@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Shirley 日记" />
+  <meta name="theme-color" content="#7BB5F0" />
+  <meta name="description" content="Shirley 的个人综合管理 APP - 记账/待办/运动/生理期/风格/单词/壁纸" />
+
+  <title>Shirley 日记</title>
+
+  <!-- 图标 -->
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="icon-167.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== 左侧导航栏 ===== -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-avatar">
+        <img src="icon-180.png" alt="猫猫" />
+      </div>
+      <div class="sidebar-name">Shirley</div>
+      <div class="sidebar-date" id="nav-date"></div>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" data-page="home">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-text">首页</span>
+      </li>
+      <li class="nav-item" data-page="finance">
+        <span class="nav-icon">💰</span>
+        <span class="nav-text">记账</span>
+      </li>
+      <li class="nav-item" data-page="todo">
+        <span class="nav-icon">✅</span>
+        <span class="nav-text">当日待办</span>
+      </li>
+      <li class="nav-item" data-page="fitness">
+        <span class="nav-icon">💪</span>
+        <span class="nav-text">运动 / 体重</span>
+      </li>
+      <li class="nav-item" data-page="period">
+        <span class="nav-icon">🌸</span>
+        <span class="nav-text">生理期</span>
+      </li>
+      <li class="nav-item" data-page="style">
+        <span class="nav-icon">🛋️</span>
+        <span class="nav-text">风格</span>
+      </li>
+      <li class="nav-item" data-page="words">
+        <span class="nav-icon">📚</span>
+        <span class="nav-text">单词阅读</span>
+      </li>
+      <li class="nav-item" data-page="wallpaper">
+        <span class="nav-icon">🖼️</span>
+        <span class="nav-text">壁纸</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <button class="btn-backup" id="btn-backup">📤 数据备份</button>
+    </div>
+  </nav>
+
+  <!-- 侧边栏遮罩（移动端） -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ===== 主内容区 ===== -->
+  <main class="main-content">
+    <header class="main-header">
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+      <h1 class="page-title" id="page-title">首页</h1>
+      <span class="header-date" id="header-date"></span>
+    </header>
+
+    <div class="page-container" id="page-container">
+      <!-- 各页面动态渲染 -->
+    </div>
+  </main>
+
+  <!-- ===== 首页动态小猫 SVG（定义在 body 层，首页引用） ===== -->
+  <script src="app.js"></script>
+  <script>
+    // 注册 Service Worker（PWA 离线可用）
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW 注册失败:', err));
+      });
+    }
+  </script>
+</body>
+</html>
