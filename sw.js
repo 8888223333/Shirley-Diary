@@ -1,5 +1,5 @@
 // Shirley 日记 - Service Worker
-const CACHE_NAME = 'shirley-diary-v3';
+const CACHE_NAME = 'shirley-diary-v4';
 const urlsToCache = [
   './',
   './index.html',
