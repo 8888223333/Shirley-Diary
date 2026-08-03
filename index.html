@@ -95,11 +95,36 @@
   <!-- ===== 首页动态小猫 SVG（定义在 body 层，首页引用） ===== -->
   <script src="app.js"></script>
   <script>
-    // 注册 Service Worker（PWA 离线可用）
+    // ===== 强制清理旧 Service Worker 和缓存，再注册新的 =====
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW 注册失败:', err));
-      });
+      async function cleanAndRegisterSW() {
+        try {
+          // 1. 注销所有已注册的 Service Worker
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.unregister();
+            console.log('已注销旧 SW:', reg.scope);
+          }
+          // 2. 清理所有缓存
+          if ('caches' in window) {
+            const names = await caches.keys();
+            for (const name of names) {
+              await caches.delete(name);
+              console.log('已删除旧缓存:', name);
+            }
+          }
+        } catch (e) {
+          console.warn('清理旧缓存失败:', e);
+        }
+        // 3. 重新注册新的 Service Worker
+        try {
+          await navigator.serviceWorker.register('./sw.js');
+          console.log('新 SW 注册成功');
+        } catch (err) {
+          console.warn('SW 注册失败:', err);
+        }
+      }
+      window.addEventListener('load', cleanAndRegisterSW);
     }
   </script>
 </body>
